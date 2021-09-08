@@ -16,25 +16,9 @@ dir_img = "C:/projects/phd/unet_map_seg/tiles_100k/imgs/"#'E:/data/train/AB_tile
 dir_mask = "C:/projects/phd/unet_map_seg/tiles_100k/masks/"#'E:/data/train/AB_tiles/masks/'
 dir_checkpoint = ""#'E:/experiments/deepseg_models/checkpoints16/'
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
-img_scale = 1.0
-val_percent = 0.1
-batch_size = 1
-pos_weight = 60
-epochs = 4
-dataset = BasicDataset(dir_img, dir_mask, img_scale)
-n_val = int(len(dataset) * val_percent)
-n_train = len(dataset) - n_val
-train, val = random_split(dataset, [n_train, n_val])
-
-dataloaders = {
-    'train': DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=2, pin_memory=True),
-    'val': DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=2, pin_memory=True, drop_last=True)
-}
-
-criterion = nn.BCEWithLogitsLoss(pos_weight=(torch.cuda.FloatTensor([pos_weight]) if torch.cuda.is_available() else torch.FloatTensor([pos_weight])) ) # class weighting loss fxn
 def calc_loss(pred, target, metrics, bce_weight=0.5):
     # bce = F.binary_cross_entropy_with_logits(pred, target)
 
@@ -122,8 +106,24 @@ def train_model(model, optimizer, scheduler, num_epochs=25):
     model.load_state_dict(best_model_wts)
     return model
 
-
+img_scale = 1.0
+val_percent = 0.1
+batch_size = 1
+pos_weight = 60
+epochs = 4
 if __name__ == '__main__':
+    dataset = BasicDataset(dir_img, dir_mask, img_scale)
+    n_val = int(len(dataset) * val_percent)
+    n_train = len(dataset) - n_val
+    train, val = random_split(dataset, [n_train, n_val])
+
+    dataloaders = {
+        'train': DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=1, pin_memory=True),
+        'val': DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=1, pin_memory=True, drop_last=True)
+    }
+
+    criterion = nn.BCEWithLogitsLoss(pos_weight=(torch.cuda.FloatTensor([pos_weight]) if torch.cuda.is_available() else torch.FloatTensor([pos_weight])) ) # class weighting loss fxn
+
     num_class = 1
 
     model = UNet(num_class).to(device)
